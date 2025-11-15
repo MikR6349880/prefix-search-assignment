@@ -1,0 +1,50 @@
+# version: '3.8' # Убрана устаревшая строка
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0 # Указываем конкретную версию
+    container_name: opensearch
+    environment:
+      - "discovery.type=single-node"
+      # Отключаем security plugin для простоты в тестовой среде
+      - "plugins.security.disabled=true"
+      # Увеличиваем память (важно!)
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      # Отключаем demo configuration script, так как security отключен
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    # Убран healthcheck, так как URL может отличаться при отключенном security
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?pretty || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    networks:
+      - opensearch
+
+  # OpenSearch Dashboards (аналог Kibana) для OpenSearch
+  opensearch_dashboards:
+    image: opensearchproject/opensearch-dashboards:2.18.0
+    container_name: opensearch_dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      # Указываем, куда подключаться (http, так как security отключен)
+      - "OPENSEARCH_HOSTS=http://opensearch:9200"
+      # Отключаем security plugin в Dashboards
+      - "OPENSEARCH_DASHBOARDS_SECURITY_ENABLED=false"
+      # Дополнительная настройка для отключения SSL, если security отключен
+      - "SERVER_SSL_ENABLED=false"
+    depends_on:
+      - opensearch
+    networks:
+      - opensearch
+
+volumes:
+  opensearch_data:
+
+networks:
+  opensearch:
+    driver: bridge
